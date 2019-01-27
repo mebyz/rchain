@@ -1,4 +1,48 @@
-new log(`rho:io:stdout`), stdoutAck(`rho:io:stdoutAck`), pay, credit, income, outcome in {
+new pay, invoiceId, widthdraw,
+    ri(`rho:registry:insertArbitrary`), 
+    rl(`rho:registry:lookup`),
+    stdout(`rho:io:stdout`),
+    stdoutAck(`rho:io:stdoutAck`), ack in { 
+
+        // agent A
+        pay!(*invoiceId,100) |
+
+        // agent B
+        for(@paymentId <- invoiceId) {
+            widthdraw!(paymentId, *ack)
+        } |
+
+        // agent A behaviour
+        contract pay(registryIdentifier,@amount) = {
+        		stdout!(amount)
+            |
+            new X, Y, innerAck in {
+                stdoutAck!(*X, *innerAck) |
+                for(_ <- innerAck){
+                    ri!(*X, *Y) |
+                    for(@uri <- Y) {
+                        stdout!(uri) |
+                        registryIdentifier!(uri)
+                    }
+                }
+            }
+        } |
+
+        // agent B behaviour
+        contract widthdraw(@uri, result) = {
+            new paymentIdLookupResponse in {
+                rl!(uri, *paymentIdLookupResponse) |
+                for(@val <- paymentIdLookupResponse) {
+                
+                    stdout!(val) |
+                    stdout!(" << got payment pid using identifier. B can widthdraw money with pid :) \n") |
+                    stdoutAck!(val, *result)
+                }
+            }
+        }
+    }
+    
+    /*new log(`rho:io:stdout`), stdoutAck(`rho:io:stdoutAck`), pay, credit, income, outcome in {
   
   pay!(100) |
 
@@ -10,4 +54,4 @@ new log(`rho:io:stdout`), stdoutAck(`rho:io:stdoutAck`), pay, credit, income, ou
  		credit!(out) |
     stdout!(["A has payed ", out])
   }
-}
+}*/
