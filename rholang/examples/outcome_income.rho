@@ -1,0 +1,13 @@
+new log(`rho:io:stdout`), stdoutAck(`rho:io:stdoutAck`), pay, credit, income, outcome in {
+  
+  pay!(100) |
+
+  for (@inc <- credit) {
+    stdout!(["B has been payed ", inc])
+  } |
+  
+  for (@out <- pay) {
+ 		credit!(out) |
+    stdout!(["A has payed ", out])
+  }
+}
