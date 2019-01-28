@@ -1,57 +1,67 @@
-new pay, invoiceId, widthdraw,
+// emmanuel.botros@gmail.com
+
+new pay, invoiceId, invoiceAmount, invoiceName, processIncomeTax, widthdraw, taxPay,
     ri(`rho:registry:insertArbitrary`), 
     rl(`rho:registry:lookup`),
     stdout(`rho:io:stdout`),
     stdoutAck(`rho:io:stdoutAck`), ack in { 
 
-        // agent A
-        pay!(*invoiceId,100) |
+        // agent A (Employer)
+        pay!(*invoiceId, *invoiceName, *invoiceAmount, "Joe", 100) |
 
-        // agent B
-        for(@paymentId <- invoiceId) {
-            widthdraw!(paymentId, *ack)
-        } |
-
-        // agent A behaviour
-        contract pay(registryIdentifier,@amount) = {
-        	
-            new X, Y, innerAck in {
-                stdoutAck!(*X, *innerAck) |
-                for(_ <- innerAck){
-                    ri!(*X, *Y) |
-                    for(@uri <- Y) {	
-                        stdout!(amount) |
-                        stdout!(uri) |
-                        registryIdentifier!(uri)
-                    }
-                }
-            }
-        } |
-
-        // agent B behaviour
-        contract widthdraw(@uri, result) = {
+        for(@paymentId <- invoiceId;@paymentName <- invoiceName;@amount <- invoiceAmount) {
+            // agent B (Employee)
+            widthdraw!(paymentId, paymentName, amount/2, *ack)
+            |
+            taxPay!(paymentId, paymentName, amount/2, *ack)
+        		|
+            
+            // agent C (Tax Services)
+        		processIncomeTax!(paymentId, paymentName, amount/2, *ack)            
+        } 
+        |
+        
+        // agent A (Employer)
+        contract pay(pId, pName, pAmount, @name,@amount) = {
+            new Y, H in {
+              @"keccak256Hash"!(name.toByteArray(), *Y) |
+              for (@H <- Y) {
+              	pId!(H)
+              }|
+              pName!(name)|
+              pAmount!(amount)|
+              stdout!(" << workload payed ! (AGENT A) \n")
+        		}
+        	} 
+        |
+        // agent B (Employee)
+        contract widthdraw(@uri,@name,@amount, result) = {
             new paymentIdLookupResponse in {
-                rl!(uri, *paymentIdLookupResponse) |
-                for(@val <- paymentIdLookupResponse) {
-                
-                    stdout!(val) |
-                    stdout!(" << got payment pid using identifier. B can widthdraw money with pid :) \n") |
-                    stdoutAck!(val, *result)
-                }
+                    stdout!(uri) |
+                    stdout!(name) |
+            				stdout!(amount) |
+                    stdout!(" << got payment. can widthdraw ! (AGENT B) \n")
+            }
+        }
+        |
+        // agent B (Employee)
+        contract taxPay(@uri,@name,@amount, result) = {
+            new taxPaymentOut in {
+                    stdout!(uri) |
+                    stdout!(name) |
+            				stdout!(amount) |
+                    stdout!(" << tax payed ! (AGENT B) \n")
+            }
+        }
+        |
+        // agent C (Tax Services)
+        contract processIncomeTax(@uri,@name,@amount, result) = {
+            new taxPaymentIn in {
+                    stdout!(uri) |
+                    stdout!(name) |
+            				stdout!(amount) |
+                    stdout!(" << tax secured ! (AGENT C) \n")
             }
         }
     }
     
-    /*new log(`rho:io:stdout`), stdoutAck(`rho:io:stdoutAck`), pay, credit, income, outcome in {
-  
-  pay!(100) |
-
-  for (@inc <- credit) {
-    stdout!(["B has been payed ", inc])
-  } |
-  
-  for (@out <- pay) {
- 		credit!(out) |
-    stdout!(["A has payed ", out])
-  }
-}*/
