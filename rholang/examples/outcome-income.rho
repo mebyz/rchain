@@ -14,13 +14,13 @@ new pay, invoiceId, widthdraw,
 
         // agent A behaviour
         contract pay(registryIdentifier,@amount) = {
-        		stdout!(amount)
-            |
+        	
             new X, Y, innerAck in {
                 stdoutAck!(*X, *innerAck) |
                 for(_ <- innerAck){
                     ri!(*X, *Y) |
-                    for(@uri <- Y) {
+                    for(@uri <- Y) {	
+                        stdout!(amount) |
                         stdout!(uri) |
                         registryIdentifier!(uri)
                     }
